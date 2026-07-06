@@ -1,4 +1,3 @@
-// App state
 let hotels = [];
 let localHotels = JSON.parse(localStorage.getItem('local_hotels')) || [];
 let deletedHotels = JSON.parse(localStorage.getItem('deleted_hotels')) || [];
@@ -6,17 +5,14 @@ let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
 let bookings = JSON.parse(localStorage.getItem('bookings')) || [];
 let reviews = JSON.parse(localStorage.getItem('reviews')) || {};
 
-// Page controls
 let currentPage = 1;
 let limit = 6;
 let totalHotelsCount = 0;
 let currentHotelDetails = null;
 
-// Bootstrap modals
 let detailsModal;
 let adminModal;
 
-// Init app
 document.addEventListener('DOMContentLoaded', () => {
     detailsModal = new bootstrap.Modal(document.getElementById('details-modal'));
     adminModal = new bootstrap.Modal(document.getElementById('admin-modal'));
@@ -29,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateBadges();
 });
 
-// Setup Dark/Light mode
 function initTheme() {
     const isDark = localStorage.getItem('dark_mode') === 'true';
     if (isDark) {
@@ -45,22 +40,18 @@ function initTheme() {
     });
 }
 
-// Navigation between tabs
 function setupTabNavigation() {
     const tabs = ['explorer', 'bookings', 'favorites', 'admin'];
     tabs.forEach(tab => {
         document.getElementById(`tab-${tab}`).addEventListener('click', (e) => {
             e.preventDefault();
             
-            // Toggle active classes in nav
             tabs.forEach(t => document.getElementById(`tab-${t}`).classList.remove('active'));
             document.getElementById(`tab-${tab}`).classList.add('active');
             
-            // Toggle visible sections
             tabs.forEach(t => document.getElementById(`${t}-section`).classList.add('d-none'));
             document.getElementById(`${tab}-section`).classList.remove('d-none');
             
-            // Render target sections
             if (tab === 'bookings') renderBookings();
             if (tab === 'favorites') renderFavorites();
             if (tab === 'admin') renderAdminTable();
@@ -68,7 +59,6 @@ function setupTabNavigation() {
     });
 }
 
-// Handle filters events
 function setupFilters() {
     document.getElementById('search-btn').addEventListener('click', () => {
         currentPage = 1;
@@ -87,7 +77,6 @@ function setupFilters() {
         fetchHotels();
     });
 
-    // Slider binding with inputs
     const slider = document.getElementById('price-slider');
     const minInput = document.getElementById('min-price');
     const maxInput = document.getElementById('max-price');
@@ -131,7 +120,6 @@ function setupFilters() {
         fetchHotels();
     });
 
-    // Pagination links
     document.getElementById('page-prev').addEventListener('click', (e) => {
         e.preventDefault();
         if (currentPage > 1) {
@@ -150,7 +138,6 @@ function setupFilters() {
     });
 }
 
-// Fetch hotels from API using URL query params
 async function fetchHotels() {
     const grid = document.getElementById('hotel-grid');
     const loader = document.getElementById('loader');
@@ -187,14 +174,12 @@ async function fetchHotels() {
         }
     } catch (e) {
         console.error("Fetch error", e);
-        alert("Failed to load hotels from server. Showing local overrides only.");
         mergeAndRender([]);
     } finally {
         loader.classList.add('d-none');
     }
 }
 
-// Blend custom local hotels with remote API results and apply client filters
 function mergeAndRender(apiHotels) {
     const city = document.getElementById('city-select').value;
     const search = document.getElementById('search-input').value.trim().toLowerCase();
@@ -203,7 +188,6 @@ function mergeAndRender(apiHotels) {
     const rating = parseFloat(document.getElementById('rating-select').value) || 0;
     const sort = document.getElementById('sort-select').value;
 
-    // Filter local hotels using active search filters in client
     let filteredLocals = localHotels.filter(hotel => {
         if (deletedHotels.includes(hotel.id)) return false;
         if (city && hotel.location !== city) return false;
@@ -223,19 +207,15 @@ function mergeAndRender(apiHotels) {
         return true;
     });
 
-    // Exclude overwritten or locally deleted remote hotels
     let filteredRemotes = apiHotels.filter(hotel => {
         if (deletedHotels.includes(hotel.id)) return false;
-        // Overrides check
         const isOverridden = localHotels.some(local => String(local.id) === String(hotel.id));
         if (isOverridden) return false;
         return true;
     });
 
-    // Combine local catalog + server catalog
     let merged = [...filteredLocals, ...filteredRemotes];
 
-    // Client sort to ensure local hotels sit in correct positions
     if (sort === 'price') {
         merged.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
     } else if (sort === '-price') {
@@ -246,7 +226,6 @@ function mergeAndRender(apiHotels) {
 
     totalHotelsCount = merged.length;
     
-    // Pagination slicing
     const totalPages = Math.ceil(totalHotelsCount / limit) || 1;
     if (currentPage > totalPages) currentPage = totalPages;
 
@@ -255,13 +234,11 @@ function mergeAndRender(apiHotels) {
 
     renderExplorerGrid(paginated);
 
-    // Update page display controls
     document.getElementById('page-number').innerText = `Page ${currentPage} of ${totalPages}`;
     document.getElementById('page-prev-li').classList.toggle('disabled', currentPage === 1);
     document.getElementById('page-next-li').classList.toggle('disabled', currentPage === totalPages);
 }
 
-// Render explorer grid list
 function renderExplorerGrid(list) {
     const grid = document.getElementById('hotel-grid');
     
@@ -292,7 +269,7 @@ function renderExplorerGrid(list) {
                             <small class="text-primary fw-bold">${hotel.location}</small>
                             <small class="fw-bold"><i class="bi bi-star-fill text-warning"></i> ${rating}</small>
                         </div>
-                        <h6 class="card-title text-dark">${hotel.name}</h6>
+                        <h6 class="card-title text-dark text-truncate">${hotel.name}</h6>
                         <p class="card-text text-muted small flex-grow-1" style="height: 38px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
                             ${hotel.description}
                         </p>
@@ -310,12 +287,10 @@ function renderExplorerGrid(list) {
     }).join('');
 }
 
-// Fetch details and open view modal
 async function openDetails(id) {
     let hotel = localHotels.find(h => String(h.id) === String(id));
     
     if (!hotel) {
-        // If not found in local, fetch directly from server by ID
         try {
             const res = await fetch(`https://demohotelsapi.pythonanywhere.com/hotels/${id}/`);
             const json = await res.json();
@@ -337,7 +312,6 @@ async function openDetails(id) {
     document.getElementById('modal-hotel-name').innerText = hotel.name;
     document.getElementById('modal-hotel-desc').innerText = hotel.description;
 
-    // Build photo slides
     let photos = [];
     if (hotel.photos) {
         if (Array.isArray(hotel.photos)) photos = hotel.photos;
@@ -351,7 +325,6 @@ async function openDetails(id) {
         </div>
     `).join('');
 
-    // Setup dates and price calculation
     const bookingForm = document.getElementById('booking-form');
     bookingForm.reset();
     
@@ -371,7 +344,6 @@ async function openDetails(id) {
     detailsModal.show();
 }
 
-// Calculate total sum dynamically
 function calcBookingPrice() {
     const checkin = document.getElementById('booking-checkin').value;
     const checkout = document.getElementById('booking-checkout').value;
@@ -405,7 +377,6 @@ function calcBookingPrice() {
     document.getElementById('calc-total').innerText = formatCurrency(totalSum);
 }
 
-// Form binding calculations
 function setupForms() {
     document.getElementById('booking-checkin').addEventListener('change', () => {
         document.getElementById('booking-checkout').min = document.getElementById('booking-checkin').value;
@@ -414,7 +385,6 @@ function setupForms() {
     document.getElementById('booking-checkout').addEventListener('change', calcBookingPrice);
     document.getElementById('booking-room').addEventListener('change', calcBookingPrice);
 
-    // Confirm stays booking
     document.getElementById('booking-form').addEventListener('submit', (e) => {
         e.preventDefault();
         if (!currentHotelDetails) return;
@@ -452,11 +422,9 @@ function setupForms() {
         detailsModal.hide();
         alert(`Booking confirmed! Reference: ${booking.id}`);
 
-        // Direct redirection to Bookings Tab
         document.getElementById('tab-bookings').click();
     });
 
-    // Submits review
     document.getElementById('review-form').addEventListener('submit', (e) => {
         e.preventDefault();
         if (!currentHotelDetails) return;
@@ -483,7 +451,6 @@ function setupForms() {
         renderReviews(currentHotelDetails.id, currentHotelDetails.rating);
     });
 
-    // Admin Add Hotel Button
     document.getElementById('add-hotel-btn').addEventListener('click', () => {
         document.getElementById('hotel-form').reset();
         document.getElementById('hotel-id').value = '';
@@ -491,7 +458,6 @@ function setupForms() {
         adminModal.show();
     });
 
-    // Admin Form Save Submit
     document.getElementById('hotel-form').addEventListener('submit', (e) => {
         e.preventDefault();
 
@@ -510,7 +476,6 @@ function setupForms() {
         }
 
         if (id) {
-            // Edit update mode
             const isLocal = localHotels.some(h => String(h.id) === String(id));
             const updated = {
                 id: id,
@@ -530,7 +495,6 @@ function setupForms() {
             }
             alert("Hotel details updated.");
         } else {
-            // New create mode
             const newHotel = {
                 id: 'local_' + Date.now(),
                 name: name,
@@ -554,12 +518,10 @@ function setupForms() {
     });
 }
 
-// Render guest reviews list
 function renderReviews(hotelId, hotelRating) {
     const list = document.getElementById('reviews-list');
     const custom = reviews[hotelId] || [];
     
-    // Seed dummy review elements
     let seeds = [
         { author: "Rohan Verma", rating: 5, text: "Excellent facilities and clean room stay.", date: "2026-06-12" },
         { author: "Shreya Sen", rating: 4, text: "Pleasant stay. Room services were smooth.", date: "2026-06-25" }
@@ -579,7 +541,6 @@ function renderReviews(hotelId, hotelRating) {
     `).join('');
 }
 
-// Render Bookings Tab
 function renderBookings() {
     const list = document.getElementById('bookings-list');
     
@@ -622,7 +583,6 @@ function renderBookings() {
     `).join('');
 }
 
-// Cancel Booking Item
 function cancelStay(id) {
     if (confirm("Cancel this booking?")) {
         bookings = bookings.filter(b => b.id !== id);
@@ -632,7 +592,6 @@ function cancelStay(id) {
     }
 }
 
-// Render Favorites Tab
 function renderFavorites() {
     const grid = document.getElementById('favorites-grid');
     const all = [...localHotels, ...hotels];
@@ -664,7 +623,7 @@ function renderFavorites() {
                             <small class="text-primary fw-bold">${hotel.location}</small>
                             <small class="fw-bold"><i class="bi bi-star-fill text-warning"></i> ${rating}</small>
                         </div>
-                        <h6 class="card-title text-dark">${hotel.name}</h6>
+                        <h6 class="card-title text-dark text-truncate">${hotel.name}</h6>
                         <p class="card-text text-muted small flex-grow-1" style="height: 38px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
                             ${hotel.description}
                         </p>
@@ -682,7 +641,6 @@ function renderFavorites() {
     }).join('');
 }
 
-// Toggle Favorite Item
 function toggleFav(id) {
     if (favorites.includes(id)) {
         favorites = favorites.filter(favId => favId !== id);
@@ -699,14 +657,9 @@ function toggleFav(id) {
     }
 }
 
-// Render Admin Panel list table
 function renderAdminTable() {
     const body = document.getElementById('admin-table-body');
-    
-    // Locals override list
     const locals = localHotels.map(h => ({ ...h, isLocal: true }));
-    
-    // Remotes list excluding overrides
     const remotes = hotels
         .filter(h => !deletedHotels.includes(h.id) && !localHotels.some(l => String(l.id) === String(h.id)))
         .map(h => ({ ...h, isLocal: false }));
@@ -745,7 +698,6 @@ function renderAdminTable() {
     `).join('');
 }
 
-// Admin delete simulation
 function deleteHotelLocal(id) {
     if (confirm("Delete this hotel from listings?")) {
         const isLocal = localHotels.some(h => String(h.id) === String(id));
@@ -761,7 +713,6 @@ function deleteHotelLocal(id) {
     }
 }
 
-// Admin Edit details loader
 function editHotel(id) {
     const all = [...localHotels, ...hotels];
     const hotel = all.find(h => String(h.id) === String(id));
@@ -787,13 +738,11 @@ function editHotel(id) {
     adminModal.show();
 }
 
-// Update Badges counts
 function updateBadges() {
     document.getElementById('badge-bookings').innerText = bookings.length;
     document.getElementById('badge-favorites').innerText = favorites.length;
 }
 
-// Format Currency
 function formatCurrency(val) {
     const num = parseFloat(val) || 0;
     return new Intl.NumberFormat('en-IN', {
