@@ -25,6 +25,62 @@ document.addEventListener('DOMContentLoaded', () => {
     updateBadges();
 });
 
+function showToast(message, type = 'success') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;';
+        document.body.appendChild(container);
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-msg toast-${type}`;
+    
+    let icon = 'bi-check-circle-fill text-success';
+    if (type === 'danger') icon = 'bi-exclamation-octagon-fill text-danger';
+    
+    toast.innerHTML = `<i class="bi ${icon}"></i> <span>${message}</span>`;
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+function showConfirm(message, callback) {
+    let container = document.getElementById('confirm-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'confirm-container';
+        container.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 10000; pointer-events: none;';
+        document.body.appendChild(container);
+    }
+    
+    container.innerHTML = '';
+    
+    const card = document.createElement('div');
+    card.className = 'confirm-card';
+    card.innerHTML = `
+        <h6 class="mb-2 fw-bold"><i class="bi bi-question-circle-fill text-warning me-1"></i> Confirmation</h6>
+        <p class="small text-muted mb-3">${message}</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-sm btn-outline-secondary" id="confirm-no-btn">No</button>
+            <button class="btn btn-sm btn-danger" id="confirm-yes-btn">Yes</button>
+        </div>
+    `;
+    container.appendChild(card);
+    
+    document.getElementById('confirm-no-btn').addEventListener('click', () => {
+        card.remove();
+    });
+    
+    document.getElementById('confirm-yes-btn').addEventListener('click', () => {
+        card.remove();
+        callback();
+    });
+}
+
 function initTheme() {
     const isDark = localStorage.getItem('dark_mode') === 'true';
     if (isDark) {
@@ -174,6 +230,7 @@ async function fetchHotels() {
         }
     } catch (e) {
         console.error("Fetch error", e);
+        showToast("Error connecting to hotel database.", "danger");
         mergeAndRender([]);
     } finally {
         loader.classList.add('d-none');
@@ -303,7 +360,7 @@ async function openDetails(id) {
     }
 
     if (!hotel) {
-        alert("Hotel details not found.");
+        showToast("Hotel details not found.", "danger");
         return;
     }
 
@@ -420,7 +477,7 @@ function setupForms() {
         updateBadges();
         
         detailsModal.hide();
-        alert(`Booking confirmed! Reference: ${booking.id}`);
+        showToast(`Booking Confirmed! Ref: ${booking.id}`, "success");
 
         document.getElementById('tab-bookings').click();
     });
@@ -449,6 +506,7 @@ function setupForms() {
 
         document.getElementById('review-form').reset();
         renderReviews(currentHotelDetails.id, currentHotelDetails.rating);
+        showToast("Review submitted successfully!", "success");
     });
 
     document.getElementById('add-hotel-btn').addEventListener('click', () => {
@@ -493,7 +551,7 @@ function setupForms() {
             } else {
                 localHotels.push(updated);
             }
-            alert("Hotel details updated.");
+            showToast("Hotel updated successfully!", "success");
         } else {
             const newHotel = {
                 id: 'local_' + Date.now(),
@@ -507,7 +565,7 @@ function setupForms() {
             };
 
             localHotels.push(newHotel);
-            alert("New hotel added.");
+            showToast("New hotel added successfully!", "success");
         }
 
         localStorage.setItem('local_hotels', JSON.stringify(localHotels));
@@ -584,12 +642,13 @@ function renderBookings() {
 }
 
 function cancelStay(id) {
-    if (confirm("Cancel this booking?")) {
+    showConfirm("Are you sure you want to cancel this booking?", () => {
         bookings = bookings.filter(b => b.id !== id);
         localStorage.setItem('bookings', JSON.stringify(bookings));
         updateBadges();
         renderBookings();
-    }
+        showToast("Stay cancelled successfully.", "danger");
+    });
 }
 
 function renderFavorites() {
@@ -644,8 +703,10 @@ function renderFavorites() {
 function toggleFav(id) {
     if (favorites.includes(id)) {
         favorites = favorites.filter(favId => favId !== id);
+        showToast("Removed from favorites.", "danger");
     } else {
         favorites.push(id);
+        showToast("Saved to favorites!", "success");
     }
     localStorage.setItem('favorites', JSON.stringify(favorites));
     updateBadges();
@@ -699,7 +760,7 @@ function renderAdminTable() {
 }
 
 function deleteHotelLocal(id) {
-    if (confirm("Delete this hotel from listings?")) {
+    showConfirm("Are you sure you want to delete this hotel from listings?", () => {
         const isLocal = localHotels.some(h => String(h.id) === String(id));
         if (isLocal) {
             localHotels = localHotels.filter(h => String(h.id) !== String(id));
@@ -710,7 +771,8 @@ function deleteHotelLocal(id) {
         }
         renderAdminTable();
         fetchHotels();
-    }
+        showToast("Hotel deleted successfully.", "danger");
+    });
 }
 
 function editHotel(id) {
